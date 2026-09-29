@@ -4,12 +4,8 @@ from urllib.parse import urlparse
 
 README = "README.md"
 
-# Сначала русские сабреддиты, потом английские программистские
+# ТОЛЬКО программистские сабреддиты (без pikabu и russianmemes!)
 SUBREDDITS = [
-    "russianmemes",
-    "memes_ru", 
-    "RussianHumor",
-    "pikabu",
     "ProgrammerHumor",
     "programming",
     "learnprogramming",
@@ -17,6 +13,9 @@ SUBREDDITS = [
     "webdev",
     "python",
     "javascript",
+    "cscareerquestions",
+    "softwareengineering",
+    "ExperiencedDevs",
 ]
 
 ALLOWED_DOMAINS = [
@@ -35,6 +34,28 @@ IMAGE_MAGIC_BYTES = [
     b'\x89PNG',
     b'GIF87a', b'GIF89a',
     b'RIFF',
+]
+
+# Ключевые слова, связанные с программированием и учёбой
+# Мем должен содержать хотя бы одно из них в title
+KEYWORDS = [
+    # Английские
+    "code", "coding", "program", "developer", "bug", "debug", "software",
+    "algorithm", "python", "java", "javascript", "html", "css", "git",
+    "github", "stackoverflow", "compiler", "function", "variable", "loop",
+    "api", "database", "sql", "linux", "terminal", "deploy", "production",
+    "frontend", "backend", "fullstack", "devops", "server", "client",
+    "error", "exception", "syntax", "runtime", "compile", "build",
+    "student", "homework", "exam", "deadline", "university", "college",
+    "cs ", "it ", "tech", "nerd", "geek", "hacker",
+    "when you", "when the", "me when", "my code", "the code",
+    "developer", "engineer", "programmer", "coder",
+    # Русские
+    "код", "программ", "разработ", "баг", "отладк", "софт", "алгоритм",
+    "питон", "джава", "функци", "перемен", "цикл", "база данных",
+    "деплой", "продакшн", "учёб", "универ", "сессия", "дедлайн",
+    "экзамен", "лаб", "курсов", "диплом", "препод", "пара", "лекц",
+    "итишник", "программист", "кодер", "айтишник",
 ]
 
 def is_valid_image_url(url):
@@ -66,13 +87,17 @@ def is_real_image(url):
     except:
         return False
 
-def has_cyrillic(text):
-    """Проверяет наличие кириллицы в тексте"""
-    return bool(re.search('[а-яА-ЯёЁ]', text))
+def is_relevant_meme(title):
+    """Проверяем, что мем про программирование или учёбу"""
+    title_lower = title.lower()
+    for keyword in KEYWORDS:
+        if keyword in title_lower:
+            return True
+    return False
 
 def get_meme():
-    """Берём мем с приоритетом на русский язык"""
-    max_attempts = 30
+    """Берём мем с тройной проверкой"""
+    max_attempts = 50
     
     for attempt in range(max_attempts):
         sub = random.choice(SUBREDDITS)
@@ -84,44 +109,25 @@ def get_meme():
                 meme_url = data.get('url', '')
                 title = data.get('title', '')
                 
-                # Проверка URL
+                # Проверка 1: URL
                 if not meme_url or not is_valid_image_url(meme_url):
                     continue
                 
-                # Проверка содержимого
+                # Проверка 2: реальное изображение
                 if not is_real_image(meme_url):
                     continue
                 
-                # Проверка на русский язык (кириллица в title)
-                if has_cyrillic(title):
-                    print(f"✅ Нашёл русский мем из r/{sub}: {title}")
-                    return meme_url, title
-                else:
-                    print(f"️ [{attempt+1}] Английский мем из r/{sub}, ищем русский...")
+                # Проверка 3: тематика (программирование/учёба)
+                if not is_relevant_meme(title):
+                    print(f"⚠️ [{attempt+1}] Не по теме из r/{sub}: {title[:50]}")
                     continue
-                    
+                
+                print(f"✅ Нашёл мем из r/{sub}: {title}")
+                return meme_url, title
         except Exception as e:
             continue
     
-    # Если не нашли русский — берём любой валидный мем
-    print("⚠️ Не нашли русский мем, берём любой программистский")
-    for attempt in range(10):
-        sub = random.choice(SUBREDDITS)
-        try:
-            url = f"https://meme-api.com/gimme/{sub}"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=10) as r:
-                data = json.loads(r.read().decode())
-                meme_url = data.get('url', '')
-                title = data.get('title', 'Programming meme')
-                
-                if meme_url and is_valid_image_url(meme_url) and is_real_image(meme_url):
-                    print(f"✅ Взял мем из r/{sub}: {title}")
-                    return meme_url, title
-        except:
-            continue
-    
-    print("❌ Не удалось получить мем")
+    print("❌ Не удалось найти подходящий мем после 50 попыток")
     sys.exit(1)
 
 now = datetime.now().strftime("%d.%m.%Y %H:%M")
@@ -148,13 +154,13 @@ header = f"""# 😂 Коллекция программистских мемов
 ## 📊 Статистика
 
 - 🎲 Всего мемов: **{count}**
-- 📅 Последний мем: _{now}_
-- 🔄 Обновляется: 3 раза в день
-- 📚 Темы: Программирование, учеба, баги, дедлайны
+-  Последний мем: _{now}_
+-  Обновляется: 3 раза в день
+-  Темы: Программирование, учеба, баги, дедлайны
 
 ---
 
-## 🎲 Свежие мемы
+##  Свежие мемы
 
 """
 
