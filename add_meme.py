@@ -4,7 +4,6 @@ from urllib.parse import urlparse
 
 README = "README.md"
 
-# ТОЛЬКО мем-сабреддиты (там только мемы, не статьи и не вопросы)
 SUBREDDITS = [
     "ProgrammerHumor",
 ]
@@ -56,9 +55,9 @@ def is_real_image(url):
     except:
         return False
 
-def get_meme():
-    """Берём мем только из ProgrammerHumor"""
-    max_attempts = 20
+def get_meme(existing_urls, existing_titles):
+    """Берём мем, которого ещё нет в README"""
+    max_attempts = 30
     
     for attempt in range(max_attempts):
         try:
@@ -75,21 +74,24 @@ def get_meme():
                 if not is_real_image(meme_url):
                     continue
                 
-                print(f"✅ Нашёл мем: {title}")
+                # Проверяем дубликаты
+                if meme_url in existing_urls or title in existing_titles:
+                    print(f"️ Дубликат, пропускаем: {title[:50]}")
+                    continue
+                
+                print(f"✅ Нашёл новый мем: {title}")
                 return meme_url, title
         except Exception as e:
             print(f"❌ Ошибка: {e}")
             continue
     
-    print("❌ Не удалось получить мем")
+    print(" Не удалось получить уникальный мем")
     sys.exit(1)
 
 now = datetime.now().strftime("%d.%m.%Y %H:%M")
-url, title = get_meme()
 
-# Простая логика: если README нет — создаём с шапкой и первым мемом
-# Если есть — добавляем новый мем сразу после заголовка "## 🎲 Свежие мемы"
 if not os.path.exists(README):
+    # Создаём новый README
     content = f"""# 😂 Коллекция программистских мемов
 
 > Автопополняемая коллекция мемов про код, баги и учебу! 💻
@@ -98,16 +100,21 @@ if not os.path.exists(README):
 
 ## 📊 Статистика
 
-- 🎲 Всего мемов: **1**
-- 📅 Последний мем: _{now}_
+-  Всего мемов: **1**
+-  Последний мем: _{now}_
 - 🔄 Обновляется: 3 раза в день
-- 📚 Темы: Программирование, учеба, баги, дедлайны
+-  Темы: Программирование, учеба, баги, дедлайны
 
 ---
 
 ## 🎲 Свежие мемы
 
-### 🗓 {now} — {title}
+"""
+    
+    # Получаем мем (списки пустые)
+    url, title = get_meme([], [])
+    
+    content += f"""### 🗓 {now} — {title}
 
 ![]({url})
 
@@ -120,6 +127,13 @@ else:
     with open(README, 'r', encoding='utf-8') as f:
         content = f.read()
     
+    # Собираем существующие URL и title для проверки дубликатов
+    existing_urls = re.findall(r'!\[\]\((https?://[^)]+)\)', content)
+    existing_titles = re.findall(r'### 🗓 [^—]+ — (.+)', content)
+    
+    # Получаем новый мем (не дубликат)
+    url, title = get_meme(existing_urls, existing_titles)
+    
     # Считаем мемы
     count = len(re.findall(r'### 🗓', content)) + 1
     
@@ -127,16 +141,17 @@ else:
     content = re.sub(r'Всего мемов: \*\*\d+\*\*', f'Всего мемов: **{count}**', content)
     content = re.sub(r'Последний мем: _.*_', f'Последний мем: _{now}_', content)
     
-    # Находим позицию после "## 🎲 Свежие мемы\n\n"
+    # Находим маркер и вставляем ПОСЛЕ него
     marker = "## 🎲 Свежие мемы\n\n"
     if marker in content:
         idx = content.index(marker) + len(marker)
-        new_meme = f"###  {now} — {title}\n\n![]({url})\n\n<sub>Источник: Reddit</sub>\n\n---\n\n"
+        new_meme = f"### 🗓 {now} — {title}\n\n![]({url})\n\n<sub>Источник: Reddit</sub>\n\n---\n\n"
         content = content[:idx] + new_meme + content[idx:]
     else:
+        # Если маркер не найден — добавляем в конец
         content += f"\n### 🗓 {now} — {title}\n\n![]({url})\n\n<sub>Источник: Reddit</sub>\n\n---\n\n"
 
 with open(README, 'w', encoding='utf-8') as f:
     f.write(content)
 
-print(f"✅ Мем #{count if os.path.exists(README) else 1} добавлен: {title}")
+print(f"✅ Мем добавлен: {title}")
