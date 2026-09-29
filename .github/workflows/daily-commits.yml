@@ -2,10 +2,10 @@ name: Daily Russian Memes in README
 
 on:
   schedule:
-    - cron: '0 9 * * *'
-    - cron: '0 14 * * *'
-    - cron: '0 19 * * *'
-  workflow_dispatch:
+    - cron: '0 9 * * *'    # 12:00 МСК
+    - cron: '0 14 * * *'   # 17:00 МСК
+    - cron: '0 19 * * *'   # 22:00 МСК
+  workflow_dispatch:       # Ручной запуск для теста
 
 permissions:
   contents: write
@@ -19,56 +19,85 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Fetch and Add Russian Meme
+      - name: Setup Git
         run: |
           git config --local user.email "tima.privalov2008@gmail.com"
           git config --local user.name "timplif"
+
+      - name: Generate and Add Meme (Python)
+        run: |
+          python3 << 'PYTHON_SCRIPT'
+          import os
+          import urllib.request
+          import json
+          import re
+          import random
+          from datetime import datetime
+
+          README_FILE = "README.md"
+
+          # Запасные русские мемы (гарантированно работают, если API сломается)
+          FALLBACK_MEMES = [
+              {"url": "https://i.imgflip.com/1g8my4.jpg", "title": "Две кнопки: Работает и Не работает"},
+              {"url": "https://i.imgflip.com/30b1gx.jpg", "title": "Дрейк: Писать баги / Писать мемы"},
+              {"url": "https://i.imgflip.com/261o3j.jpg", "title": "Это баг? Нет, это фича!"},
+              {"url": "https://i.imgflip.com/46e43q.jpg", "title": "Всегда так было (про легаси код)"},
+              {"url": "https://i.imgflip.com/3lmzyx.jpg", "title": "Stonks (когда код скомпилировался)"}
+          ]
+
+          def get_meme():
+              try:
+                  # Пробуем получить мем из русского сабреддита
+                  req = urllib.request.Request("https://meme-api.com/gimme/russianmemes", headers={'User-Agent': 'Mozilla/5.0'})
+                  with urllib.request.urlopen(req, timeout=5) as response:
+                      data = json.loads(response.read().decode())
+                      if data.get('url') and 'http' in data['url']:
+                          return data['url'], data.get('title', 'Русский мем')
+              except Exception:
+                  pass
+              
+              # Если API не сработал, берем случайный запасной мем
+              meme = random.choice(FALLBACK_MEMES)
+              return meme['url'], meme['title']
+
+          # Читаем текущий README или создаем новый красивый шаблон
+          if os.path.exists(README_FILE):
+              with open(README_FILE, 'r', encoding='utf-8') as f:
+                  content = f.read()
+              count = len(re.findall(r'### 🗓', content)) + 1
+              content = re.sub(r'Всего мемов: \*\*\d+\*\*', f'Всего мемов: **{count}**', content)
+              content = re.sub(r'Последний мем: _.*_', f'Последний мем: _{datetime.now().strftime("%d.%m.%Y %H:%M")}_', content)
+          else:
+              count = 1
+              now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+              content = f"# 😂 Коллекция русских мемов\n\n"
+              content += f"> Автоматически пополняемая коллекция мемов. Каждый день добавляется по 3 мема! 🇷🇺\n\n"
+              content += f"---\n\n"
+              content += f"## 📊 Статистика\n\n"
+              content += f"- 🎲 Всего мемов: **{count}**\n"
+              content += f"- 📅 Последний мем: _{now_str}_\n"
+              content += f"- 🔄 Обновляется: 3 раза в день\n\n"
+              content += f"---\n\n"
+              content += f"## 🎲 Свежие мемы\n\n"
+
+          meme_url, meme_title = get_meme()
+          now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+          new_meme_block = f"### 🗓 {now_str} — {meme_title}\n\n"
+          new_meme_block += f"![]({meme_url})\n\n"
+          new_meme_block += f"<sub>Источник: Reddit / Запасной банк мемов</sub>\n\n"
+          new_meme_block += f"---\n\n"
           
-          # Создаем README если нет
-          if [ ! -f README.md ]; then
-            echo "# 😂 Коллекция русских мемов" > README.md
-            echo "" >> README.md
-            echo "> Автоматически пополняемая коллекция мемов. Каждый день добавляется по 3 мема! 🇷🇺" >> README.md
-            echo "" >> README.md
-            echo "---" >> README.md
-            echo "" >> README.md
-            echo "## 📊 Статистика" >> README.md
-            echo "" >> README.md
-            echo "- 🎲 Всего мемов: **1**" >> README.md
-            echo "-  Обновляется: 3 раза в день" >> README.md
-            echo "" >> README.md
-            echo "---" >> README.md
-            echo "" >> README.md
-            echo "## 🎲 Свежие мемы" >> README.md
-            echo "" >> README.md
-          fi
-          
-          # Получаем мем
-          MEME_JSON=$(curl -s https://meme-api.com/gimme)
-          MEME_URL=$(echo "$MEME_JSON" | jq -r '.url')
-          MEME_TITLE=$(echo "$MEME_JSON" | jq -r '.title')
-          POST_LINK=$(echo "$MEME_JSON" | jq -r '.postLink')
-          
-          # Если не получилось - берем запасной
-          if [ "$MEME_URL" = "null" ] || [ -z "$MEME_URL" ]; then
-            MEME_URL="https://i.imgflip.com/1g8my4.jpg"
-            MEME_TITLE="Запасной мем"
-            POST_LINK="https://imgflip.com"
-          fi
-          
-          # Добавляем мем
-          TODAY=$(date '+%d.%m.%Y %H:%M')
-          echo "### 🗓 $TODAY — $MEME_TITLE" >> README.md
-          echo "" >> README.md
-          echo "![]($MEME_URL)" >> README.md
-          echo "" >> README.md
-          echo "<sub>Источник: [Reddit]($POST_LINK)</sub>" >> README.md
-          echo "" >> README.md
-          echo "---" >> README.md
-          echo "" >> README.md
-          
+          content += new_meme_block
+
+          with open(README_FILE, 'w', encoding='utf-8') as f:
+              f.write(content)
+
+          print(f"✅ Мем #{count} успешно добавлен: {meme_title}")
+          PYTHON_SCRIPT
+
+      - name: Commit and Push
+        run: |
           git add README.md
-          git commit -m "😂 Добавил мем: $MEME_TITLE"
+          git commit -m "😂 Добавил русский мем"
           git push
-          
-          echo "✅ Мем добавлен!"
