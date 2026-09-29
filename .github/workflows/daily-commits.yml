@@ -24,69 +24,33 @@ jobs:
           git config --local user.email "tima.privalov2008@gmail.com"
           git config --local user.name "timplif"
           
-          # Считаем количество мемов для статистики
-          if [ -f README.md ]; then
-            MEME_COUNT=$(grep -c "### 🗓" README.md || echo "0")
-            MEME_COUNT=$((MEME_COUNT + 1))
-          else
-            MEME_COUNT=1
-          fi
-          
-          # Если README.md ещё нет — создаём шаблон
+          # Создаем README если нет
           if [ ! -f README.md ]; then
-            cat > README.md << 'EOF'
-            # 😂 Коллекция русских мемов
-            
-            > Автоматически пополняемая коллекция мемов. Каждый день добавляется по 3 мема! 🇷🇺
-            
-            ---
-            
-            ## 📊 Статистика
-            
-            - 🎲 Всего мемов: **1**
-            - 📅 Последний мем: _только что_
-            -  Обновляется: 3 раза в день
-            
-            ---
-            
-            ## 🎲 Свежие мемы
-            
-            EOF
-          else
-            # Обновляем счётчик мемов
-            sed -i "s/Всего мемов: \*\*[0-9]*\*\*/Всего мемов: **$MEME_COUNT**/" README.md
-            sed -i "s/Последний мем: _.*_/Последний мем: _$(date '+%d.%m.%Y %H:%M')_/" README.md
+            echo "# 😂 Коллекция русских мемов" > README.md
+            echo "" >> README.md
+            echo "> Автоматически пополняемая коллекция мемов. Каждый день добавляется по 3 мема! 🇷🇺" >> README.md
+            echo "" >> README.md
+            echo "---" >> README.md
+            echo "" >> README.md
+            echo "## 📊 Статистика" >> README.md
+            echo "" >> README.md
+            echo "- 🎲 Всего мемов: **1**" >> README.md
+            echo "-  Обновляется: 3 раза в день" >> README.md
+            echo "" >> README.md
+            echo "---" >> README.md
+            echo "" >> README.md
+            echo "## 🎲 Свежие мемы" >> README.md
+            echo "" >> README.md
           fi
           
-          # Список русских сабреддитов
-          SUBREDDITS=("russianmemes" "memes_ru" "RussianHumor")
-          RANDOM_SUB=${SUBREDDITS[$((RANDOM % ${#SUBREDDITS[@]}))]}
-          
-          # Пробуем получить мем
-          MEME_JSON=$(curl -s "https://meme-api.com/gimme/$RANDOM_SUB")
+          # Получаем мем
+          MEME_JSON=$(curl -s https://meme-api.com/gimme)
           MEME_URL=$(echo "$MEME_JSON" | jq -r '.url')
           MEME_TITLE=$(echo "$MEME_JSON" | jq -r '.title')
           POST_LINK=$(echo "$MEME_JSON" | jq -r '.postLink')
           
-          # Фильтрация по кириллице
-          if [ "$MEME_URL" == "null" ] || [ -z "$MEME_URL" ]; then
-            echo "Ищем мем с кириллицей..."
-            
-            for i in {1..10}; do
-              MEME_JSON=$(curl -s https://meme-api.com/gimme)
-              MEME_TITLE=$(echo "$MEME_JSON" | jq -r '.title')
-              
-              if echo "$MEME_TITLE" | grep -q '[а-яА-ЯёЁ]'; then
-                MEME_URL=$(echo "$MEME_JSON" | jq -r '.url')
-                POST_LINK=$(echo "$MEME_JSON" | jq -r '.postLink')
-                echo "✅ Нашёл: $MEME_TITLE"
-                break
-              fi
-            done
-          fi
-          
-          # Запасной вариант
-          if [ "$MEME_URL" == "null" ] || [ -z "$MEME_URL" ]; then
+          # Если не получилось - берем запасной
+          if [ "$MEME_URL" = "null" ] || [ -z "$MEME_URL" ]; then
             MEME_URL="https://i.imgflip.com/1g8my4.jpg"
             MEME_TITLE="Запасной мем"
             POST_LINK="https://imgflip.com"
@@ -94,19 +58,17 @@ jobs:
           
           # Добавляем мем
           TODAY=$(date '+%d.%m.%Y %H:%M')
-          cat >> README.md << EOF
-          ### 🗓 $TODAY — $MEME_TITLE
-          
-          ![]($MEME_URL)
-          
-          <sub>Источник: [Reddit]($POST_LINK)</sub>
-          
-          ---
-          
-          EOF
+          echo "### 🗓 $TODAY — $MEME_TITLE" >> README.md
+          echo "" >> README.md
+          echo "![]($MEME_URL)" >> README.md
+          echo "" >> README.md
+          echo "<sub>Источник: [Reddit]($POST_LINK)</sub>" >> README.md
+          echo "" >> README.md
+          echo "---" >> README.md
+          echo "" >> README.md
           
           git add README.md
-          git commit -m " Мем #$MEME_COUNT: $MEME_TITLE"
+          git commit -m "😂 Добавил мем: $MEME_TITLE"
           git push
           
-          echo "✅ Мем #$MEME_COUNT добавлен!"
+          echo "✅ Мем добавлен!"
