@@ -2,12 +2,14 @@ name: Daily Auto Commits
 
 on:
   schedule:
-    # Запускается 4 раза в день в разное время (время по UTC)
-    - cron: '0 8 * * *'    # 11:00 по МСК
-    - cron: '0 12 * * *'   # 15:00 по МСК
-    - cron: '0 16 * * *'   # 19:00 по МСК
-    - cron: '0 20 * * *'   # 23:00 по МСК
-  workflow_dispatch:       # Позволяет запускать вручную для теста
+    - cron: '0 8 * * *'
+    - cron: '0 12 * * *'
+    - cron: '0 16 * * *'
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # ← ЭТО ГЛАВНОЕ ИСПРАВЛЕНИЕ! Даём права на запись
 
 jobs:
   auto-commit:
@@ -15,30 +17,27 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true   # ← Сохраняем токен для push
 
       - name: Make random number of commits
         run: |
-          # Настрой под себя:
           git config --local user.email "tima.privalov2008@gmail.com"
           git config --local user.name "timplif"
           
-          # Случайное число коммитов от 1 до 10
-          NUM_COMMITS=$((RANDOM % 10 + 1))
+          NUM_COMMITS=$((RANDOM % 3 + 1))
           echo "📝 Сегодня будет сделано коммитов: $NUM_COMMITS"
           
           for i in $(seq 1 $NUM_COMMITS); do
-            # Случайное сообщение из списка
             MESSAGES=("Работа над логикой" "Исправление мелочи" "Добавил комментарии" "Рефакторинг" "Тесты" "Обновил документацию" "Оптимизация" "Чистка кода" "Добавил фичу" "Исправил баг")
             MSG=${MESSAGES[$((RANDOM % ${#MESSAGES[@]}))]}
             
-            # Добавляем строчку в файл с датой и временем
             echo "$(date '+%Y-%m-%d %H:%M:%S') - $MSG (#$i)" >> daily_log.txt
             
             git add daily_log.txt
-            git commit -m "$MSG" || echo "Нет изменений"
+            git commit -m "$MSG"
             git push
             
-            # Задержка между коммитами от 5 до 25 минут
             if [ $i -lt $NUM_COMMITS ]; then
               DELAY=$((RANDOM % 1200 + 300))
               echo "⏳ Следующий коммит через $((DELAY / 60)) минут..."
