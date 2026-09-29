@@ -15,7 +15,6 @@ IMAGE_MAGIC_BYTES = [
     b'\xff\xd8\xff', b'\x89PNG', b'GIF87a', b'GIF89a', b'RIFF',
 ]
 
-# Ключевые слова: программирование + учёба (RU + EN)
 KEYWORDS = [
     "код", "программ", "разработ", "баг", "отладк", "софт", "алгоритм",
     "питон", "джава", "функци", "перемен", "цикл", "база данных",
@@ -86,7 +85,6 @@ def get_meme(existing_urls, existing_titles, prefer_russian=True):
                 if not is_relevant(title):
                     continue
                 
-                # Если хотим русские — проверяем кириллицу
                 if prefer_russian and not has_cyrillic(title):
                     continue
                 
@@ -95,37 +93,34 @@ def get_meme(existing_urls, existing_titles, prefer_russian=True):
         except Exception as e:
             continue
     
-    # Fallback: если prefer_russian и не нашли — пробуем без требования кириллицы
     if prefer_russian:
-        print("️ Русских не нашёл, беру любой программистский")
+        print("⚠️ Русских не нашёл, беру любой программистский")
         return get_meme(existing_urls, existing_titles, prefer_russian=False)
     
     print("❌ Не удалось получить мем")
     sys.exit(1)
 
 def extract_old_memes(content):
-    """Извлекаем старые мемы из любого формата README"""
-    memes = []
-    # Разделяем по "---"
-    parts = content.split("---")
-    current = ""
-    for part in parts:
-        current += part
-        # Если в блоке есть картинка — это мем
-        if "![](" in current and "###" in current:
-            # Нормализуем
-            block = current.strip()
-            if block.startswith("###"):
-                memes.append(block)
-            current = ""
-        elif "![](" not in current and "###" not in current:
-            current = ""
-    return memes
+    """Надёжно извлекает все блоки мемов через регулярки"""
+    # Ищем все блоки, начинающиеся с "### " и идущие до следующего "### " или конца
+    pattern = r'### .*?(?=### 🗓|\Z)'
+    memes = re.findall(pattern, content, re.DOTALL)
+    
+    # Чистим каждый блок: убираем лишние "---" в конце
+    cleaned = []
+    for meme in memes:
+        meme = meme.strip()
+        # Убираем trailing "---" если есть
+        if meme.endswith("---"):
+            meme = meme[:-3].strip()
+        if meme:
+            cleaned.append(meme)
+    
+    return cleaned
 
 now = datetime.now().strftime("%d.%m.%Y %H:%M")
 
 if not os.path.exists(README):
-    # Создаём новый README с нуля
     url, title = get_meme([], [], prefer_russian=True)
     content = f"""# 😂 Коллекция программистских мемов
 
@@ -135,10 +130,10 @@ if not os.path.exists(README):
 
 ## 📊 Статистика
 
--  Всего мемов: **1**
--  Последний мем: _{now}_
+- 🎲 Всего мемов: **1**
+- 📅 Последний мем: _{now}_
 - 🔄 Обновляется: 3 раза в день
--  Темы: Программирование, учёба, баги, дедлайны
+- 📚 Темы: Программирование, учёба, баги, дедлайны
 
 ---
 
@@ -157,31 +152,32 @@ else:
     with open(README, 'r', encoding='utf-8') as f:
         old_content = f.read()
     
-    # Извлекаем старые мемы (работает с любым форматом)
+    # Извлекаем старые мемы
     old_memes = extract_old_memes(old_content)
+    print(f"📦 Найдено старых мемов: {len(old_memes)}")
     
-    # Собираем существующие URL и title для проверки дубликатов
+    # Собираем URL и title для проверки дубликатов
     existing_urls = re.findall(r'!\[\]\((https?://[^)]+)\)', old_content)
-    existing_titles = re.findall(r'### [^—]*— (.+)', old_content)
+    existing_titles = re.findall(r'### 🗓 [^—]*— (.+?)(?:\n|$)', old_content)
     
     # Получаем новый мем
     url, title = get_meme(existing_urls, existing_titles, prefer_russian=True)
     
     count = len(old_memes) + 1
     
-    # ВСЕГДА создаём шапку с нуля
+    # Создаём шапку
     header = f"""# 😂 Коллекция программистских мемов
 
 > Автопополняемая коллекция мемов про код, баги и учёбу! 💻
 
 ---
 
-##  Статистика
+## 📊 Статистика
 
 - 🎲 Всего мемов: **{count}**
--  Последний мем: _{now}_
+- 📅 Последний мем: _{now}_
 - 🔄 Обновляется: 3 раза в день
--  Темы: Программирование, учёба, баги, дедлайны
+- 📚 Темы: Программирование, учёба, баги, дедлайны
 
 ---
 
@@ -189,7 +185,7 @@ else:
 
 """
     
-    # Новый мем первым
+    # Новый мем
     new_meme = f"""### 🗓 {now} — {title}
 
 ![]({url})
@@ -200,10 +196,10 @@ else:
 
 """
     
-    # Собираем старые мемы
-    old_memes_text = "\n\n".join(old_memes)
-    if old_memes_text and not old_memes_text.endswith("\n\n---\n\n"):
-        old_memes_text += "\n\n---\n\n"
+    # Собираем старые мемы с разделителями
+    old_memes_text = ""
+    for meme in old_memes:
+        old_memes_text += meme + "\n\n---\n\n"
     
     # Итог: шапка + новый мем + старые мемы
     content = header + new_meme + old_memes_text
