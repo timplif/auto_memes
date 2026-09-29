@@ -1,48 +1,112 @@
-name: Daily Auto Commits
+name: Daily Russian Memes in README
 
 on:
   schedule:
-    - cron: '0 8 * * *'
-    - cron: '0 12 * * *'
-    - cron: '0 16 * * *'
-    - cron: '0 20 * * *'
+    - cron: '0 9 * * *'
+    - cron: '0 14 * * *'
+    - cron: '0 19 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: write   # ← ЭТО ГЛАВНОЕ ИСПРАВЛЕНИЕ! Даём права на запись
+  contents: write
 
 jobs:
-  auto-commit:
+  add-meme:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          persist-credentials: true   # ← Сохраняем токен для push
+          persist-credentials: true
 
-      - name: Make random number of commits
+      - name: Fetch and Add Russian Meme
         run: |
           git config --local user.email "tima.privalov2008@gmail.com"
           git config --local user.name "timplif"
           
-          NUM_COMMITS=$((RANDOM % 3 + 1))
-          echo "📝 Сегодня будет сделано коммитов: $NUM_COMMITS"
+          # Считаем количество мемов для статистики
+          if [ -f README.md ]; then
+            MEME_COUNT=$(grep -c "### 🗓" README.md || echo "0")
+            MEME_COUNT=$((MEME_COUNT + 1))
+          else
+            MEME_COUNT=1
+          fi
           
-          for i in $(seq 1 $NUM_COMMITS); do
-            MESSAGES=("Работа над логикой" "Исправление мелочи" "Добавил комментарии" "Рефакторинг" "Тесты" "Обновил документацию" "Оптимизация" "Чистка кода" "Добавил фичу" "Исправил баг")
-            MSG=${MESSAGES[$((RANDOM % ${#MESSAGES[@]}))]}
+          # Если README.md ещё нет — создаём шаблон
+          if [ ! -f README.md ]; then
+            cat > README.md << 'EOF'
+            # 😂 Коллекция русских мемов
             
-            echo "$(date '+%Y-%m-%d %H:%M:%S') - $MSG (#$i)" >> daily_log.txt
+            > Автоматически пополняемая коллекция мемов. Каждый день добавляется по 3 мема! 🇷🇺
             
-            git add daily_log.txt
-            git commit -m "$MSG"
-            git push
+            ---
             
-            if [ $i -lt $NUM_COMMITS ]; then
-              DELAY=$((RANDOM % 1200 + 300))
-              echo "⏳ Следующий коммит через $((DELAY / 60)) минут..."
-              sleep $DELAY
-            fi
-          done
+            ## 📊 Статистика
+            
+            - 🎲 Всего мемов: **1**
+            - 📅 Последний мем: _только что_
+            -  Обновляется: 3 раза в день
+            
+            ---
+            
+            ## 🎲 Свежие мемы
+            
+            EOF
+          else
+            # Обновляем счётчик мемов
+            sed -i "s/Всего мемов: \*\*[0-9]*\*\*/Всего мемов: **$MEME_COUNT**/" README.md
+            sed -i "s/Последний мем: _.*_/Последний мем: _$(date '+%d.%m.%Y %H:%M')_/" README.md
+          fi
           
-          echo "✅ Все коммиты сделаны!"
+          # Список русских сабреддитов
+          SUBREDDITS=("russianmemes" "memes_ru" "RussianHumor")
+          RANDOM_SUB=${SUBREDDITS[$((RANDOM % ${#SUBREDDITS[@]}))]}
+          
+          # Пробуем получить мем
+          MEME_JSON=$(curl -s "https://meme-api.com/gimme/$RANDOM_SUB")
+          MEME_URL=$(echo "$MEME_JSON" | jq -r '.url')
+          MEME_TITLE=$(echo "$MEME_JSON" | jq -r '.title')
+          POST_LINK=$(echo "$MEME_JSON" | jq -r '.postLink')
+          
+          # Фильтрация по кириллице
+          if [ "$MEME_URL" == "null" ] || [ -z "$MEME_URL" ]; then
+            echo "Ищем мем с кириллицей..."
+            
+            for i in {1..10}; do
+              MEME_JSON=$(curl -s https://meme-api.com/gimme)
+              MEME_TITLE=$(echo "$MEME_JSON" | jq -r '.title')
+              
+              if echo "$MEME_TITLE" | grep -q '[а-яА-ЯёЁ]'; then
+                MEME_URL=$(echo "$MEME_JSON" | jq -r '.url')
+                POST_LINK=$(echo "$MEME_JSON" | jq -r '.postLink')
+                echo "✅ Нашёл: $MEME_TITLE"
+                break
+              fi
+            done
+          fi
+          
+          # Запасной вариант
+          if [ "$MEME_URL" == "null" ] || [ -z "$MEME_URL" ]; then
+            MEME_URL="https://i.imgflip.com/1g8my4.jpg"
+            MEME_TITLE="Запасной мем"
+            POST_LINK="https://imgflip.com"
+          fi
+          
+          # Добавляем мем
+          TODAY=$(date '+%d.%m.%Y %H:%M')
+          cat >> README.md << EOF
+          ### 🗓 $TODAY — $MEME_TITLE
+          
+          ![]($MEME_URL)
+          
+          <sub>Источник: [Reddit]($POST_LINK)</sub>
+          
+          ---
+          
+          EOF
+          
+          git add README.md
+          git commit -m " Мем #$MEME_COUNT: $MEME_TITLE"
+          git push
+          
+          echo "✅ Мем #$MEME_COUNT добавлен!"
