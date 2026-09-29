@@ -4,18 +4,9 @@ from urllib.parse import urlparse
 
 README = "README.md"
 
-# ТОЛЬКО программистские сабреддиты (без pikabu и russianmemes!)
+# ТОЛЬКО мем-сабреддиты (там только мемы, не статьи и не вопросы)
 SUBREDDITS = [
     "ProgrammerHumor",
-    "programming",
-    "learnprogramming",
-    "coding",
-    "webdev",
-    "python",
-    "javascript",
-    "cscareerquestions",
-    "softwareengineering",
-    "ExperiencedDevs",
 ]
 
 ALLOWED_DOMAINS = [
@@ -34,28 +25,6 @@ IMAGE_MAGIC_BYTES = [
     b'\x89PNG',
     b'GIF87a', b'GIF89a',
     b'RIFF',
-]
-
-# Ключевые слова, связанные с программированием и учёбой
-# Мем должен содержать хотя бы одно из них в title
-KEYWORDS = [
-    # Английские
-    "code", "coding", "program", "developer", "bug", "debug", "software",
-    "algorithm", "python", "java", "javascript", "html", "css", "git",
-    "github", "stackoverflow", "compiler", "function", "variable", "loop",
-    "api", "database", "sql", "linux", "terminal", "deploy", "production",
-    "frontend", "backend", "fullstack", "devops", "server", "client",
-    "error", "exception", "syntax", "runtime", "compile", "build",
-    "student", "homework", "exam", "deadline", "university", "college",
-    "cs ", "it ", "tech", "nerd", "geek", "hacker",
-    "when you", "when the", "me when", "my code", "the code",
-    "developer", "engineer", "programmer", "coder",
-    # Русские
-    "код", "программ", "разработ", "баг", "отладк", "софт", "алгоритм",
-    "питон", "джава", "функци", "перемен", "цикл", "база данных",
-    "деплой", "продакшн", "учёб", "универ", "сессия", "дедлайн",
-    "экзамен", "лаб", "курсов", "диплом", "препод", "пара", "лекц",
-    "итишник", "программист", "кодер", "айтишник",
 ]
 
 def is_valid_image_url(url):
@@ -87,65 +56,41 @@ def is_real_image(url):
     except:
         return False
 
-def is_relevant_meme(title):
-    """Проверяем, что мем про программирование или учёбу"""
-    title_lower = title.lower()
-    for keyword in KEYWORDS:
-        if keyword in title_lower:
-            return True
-    return False
-
 def get_meme():
-    """Берём мем с тройной проверкой"""
-    max_attempts = 50
+    """Берём мем только из ProgrammerHumor"""
+    max_attempts = 20
     
     for attempt in range(max_attempts):
-        sub = random.choice(SUBREDDITS)
         try:
-            url = f"https://meme-api.com/gimme/{sub}"
+            url = "https://meme-api.com/gimme/ProgrammerHumor"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=10) as r:
                 data = json.loads(r.read().decode())
                 meme_url = data.get('url', '')
-                title = data.get('title', '')
+                title = data.get('title', 'Programming meme')
                 
-                # Проверка 1: URL
                 if not meme_url or not is_valid_image_url(meme_url):
                     continue
                 
-                # Проверка 2: реальное изображение
                 if not is_real_image(meme_url):
                     continue
                 
-                # Проверка 3: тематика (программирование/учёба)
-                if not is_relevant_meme(title):
-                    print(f"⚠️ [{attempt+1}] Не по теме из r/{sub}: {title[:50]}")
-                    continue
-                
-                print(f"✅ Нашёл мем из r/{sub}: {title}")
+                print(f"✅ Нашёл мем: {title}")
                 return meme_url, title
         except Exception as e:
+            print(f"❌ Ошибка: {e}")
             continue
     
-    print("❌ Не удалось найти подходящий мем после 50 попыток")
+    print("❌ Не удалось получить мем")
     sys.exit(1)
 
 now = datetime.now().strftime("%d.%m.%Y %H:%M")
 url, title = get_meme()
 
-count = 1
-old_memes = ""
-if os.path.exists(README):
-    with open(README, 'r', encoding='utf-8') as f:
-        old_content = f.read()
-    old_count = len(re.findall(r'### 🗓', old_content))
-    count = old_count + 1
-    
-    if "## 🎲 Свежие мемы" in old_content:
-        idx = old_content.index("## 🎲 Свежие мемы") + len("## 🎲 Свежие мемы")
-        old_memes = old_content[idx:].strip() + "\n\n"
-
-header = f"""# 😂 Коллекция программистских мемов
+# Простая логика: если README нет — создаём с шапкой и первым мемом
+# Если есть — добавляем новый мем сразу после заголовка "## 🎲 Свежие мемы"
+if not os.path.exists(README):
+    content = f"""# 😂 Коллекция программистских мемов
 
 > Автопополняемая коллекция мемов про код, баги и учебу! 💻
 
@@ -153,18 +98,16 @@ header = f"""# 😂 Коллекция программистских мемов
 
 ## 📊 Статистика
 
-- 🎲 Всего мемов: **{count}**
--  Последний мем: _{now}_
--  Обновляется: 3 раза в день
--  Темы: Программирование, учеба, баги, дедлайны
+- 🎲 Всего мемов: **1**
+- 📅 Последний мем: _{now}_
+- 🔄 Обновляется: 3 раза в день
+- 📚 Темы: Программирование, учеба, баги, дедлайны
 
 ---
 
-##  Свежие мемы
+## 🎲 Свежие мемы
 
-"""
-
-new_meme = f"""### 🗓 {now} — {title}
+### 🗓 {now} — {title}
 
 ![]({url})
 
@@ -173,10 +116,27 @@ new_meme = f"""### 🗓 {now} — {title}
 ---
 
 """
-
-content = header + new_meme + old_memes
+else:
+    with open(README, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Считаем мемы
+    count = len(re.findall(r'### 🗓', content)) + 1
+    
+    # Обновляем статистику
+    content = re.sub(r'Всего мемов: \*\*\d+\*\*', f'Всего мемов: **{count}**', content)
+    content = re.sub(r'Последний мем: _.*_', f'Последний мем: _{now}_', content)
+    
+    # Находим позицию после "## 🎲 Свежие мемы\n\n"
+    marker = "## 🎲 Свежие мемы\n\n"
+    if marker in content:
+        idx = content.index(marker) + len(marker)
+        new_meme = f"###  {now} — {title}\n\n![]({url})\n\n<sub>Источник: Reddit</sub>\n\n---\n\n"
+        content = content[:idx] + new_meme + content[idx:]
+    else:
+        content += f"\n### 🗓 {now} — {title}\n\n![]({url})\n\n<sub>Источник: Reddit</sub>\n\n---\n\n"
 
 with open(README, 'w', encoding='utf-8') as f:
     f.write(content)
 
-print(f"✅ Мем #{count} добавлен: {title}")
+print(f"✅ Мем #{count if os.path.exists(README) else 1} добавлен: {title}")
