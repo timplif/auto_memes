@@ -22,3 +22,11 @@
 
 ---
 
+###  29.09.2026 16:25 — Literally just play minecraft dungeons if you like combat so much
+
+![](https://i.redd.it/nln5wa93kash1.png)
+
+<sub>Источник: Reddit / Проверенные мемы</sub>
+
+---
+
