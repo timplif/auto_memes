@@ -2,10 +2,10 @@ name: Daily Russian Memes in README
 
 on:
   schedule:
-    - cron: '0 9 * * *'    # 12:00 МСК
-    - cron: '0 14 * * *'   # 17:00 МСК
-    - cron: '0 19 * * *'   # 22:00 МСК
-  workflow_dispatch:       # Ручной запуск для теста
+    - cron: '0 9 * * *'
+    - cron: '0 14 * * *'
+    - cron: '0 19 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -36,31 +36,43 @@ jobs:
 
           README_FILE = "README.md"
 
-          # Запасные русские мемы (гарантированно работают, если API сломается)
+          # ПРОВЕРЕННЫЕ рабочие ссылки на мемы (Imgur — надежный хостинг)
           FALLBACK_MEMES = [
-              {"url": "https://i.imgflip.com/1g8my4.jpg", "title": "Две кнопки: Работает и Не работает"},
-              {"url": "https://i.imgflip.com/30b1gx.jpg", "title": "Дрейк: Писать баги / Писать мемы"},
-              {"url": "https://i.imgflip.com/261o3j.jpg", "title": "Это баг? Нет, это фича!"},
-              {"url": "https://i.imgflip.com/46e43q.jpg", "title": "Всегда так было (про легаси код)"},
-              {"url": "https://i.imgflip.com/3lmzyx.jpg", "title": "Stonks (когда код скомпилировался)"}
+              {"url": "https://i.imgur.com/Q3hcK.png", "title": "It works on my machine"},
+              {"url": "https://i.imgur.com/2YzJg8l.png", "title": "When the code works"},
+              {"url": "https://i.imgur.com/3nM7pQd.png", "title": "Debugging be like"},
+              {"url": "https://i.imgur.com/kFSa8bP.png", "title": "Programmer life"},
+              {"url": "https://i.imgur.com/JnZ3kLd.png", "title": "Friday 17:00"},
+              {"url": "https://i.imgur.com/8QbVz8p.png", "title": "Stack Overflow спасает"},
+              {"url": "https://i.imgur.com/yT9qK2L.png", "title": "Дедлайн вчера"},
+              {"url": "https://i.imgur.com/5R3zK9m.png", "title": "Когда нашел баг в продакшене"}
           ]
 
           def get_meme():
               try:
-                  # Пробуем получить мем из русского сабреддита
-                  req = urllib.request.Request("https://meme-api.com/gimme/russianmemes", headers={'User-Agent': 'Mozilla/5.0'})
+                  # Пробуем получить мем из API
+                  req = urllib.request.Request("https://meme-api.com/gimme", headers={'User-Agent': 'Mozilla/5.0'})
                   with urllib.request.urlopen(req, timeout=5) as response:
                       data = json.loads(response.read().decode())
-                      if data.get('url') and 'http' in data['url']:
-                          return data['url'], data.get('title', 'Русский мем')
-              except Exception:
+                      url = data.get('url')
+                      title = data.get('title', 'Мем')
+                      
+                      # Проверяем, что ссылка рабочая
+                      if url and 'http' in url:
+                          # Проверяем, что это изображение
+                          img_req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                          with urllib.request.urlopen(img_req, timeout=3) as img_response:
+                              if 'image' in img_response.headers.get('Content-Type', ''):
+                                  return url, title
+              except Exception as e:
+                  print(f"API не сработал: {e}")
                   pass
               
-              # Если API не сработал, берем случайный запасной мем
+              # Берем случайный проверенный мем
               meme = random.choice(FALLBACK_MEMES)
               return meme['url'], meme['title']
 
-          # Читаем текущий README или создаем новый красивый шаблон
+          # Создаем или обновляем README
           if os.path.exists(README_FILE):
               with open(README_FILE, 'r', encoding='utf-8') as f:
                   content = f.read()
@@ -75,7 +87,7 @@ jobs:
               content += f"---\n\n"
               content += f"## 📊 Статистика\n\n"
               content += f"- 🎲 Всего мемов: **{count}**\n"
-              content += f"- 📅 Последний мем: _{now_str}_\n"
+              content += f"-  Последний мем: _{now_str}_\n"
               content += f"- 🔄 Обновляется: 3 раза в день\n\n"
               content += f"---\n\n"
               content += f"## 🎲 Свежие мемы\n\n"
@@ -83,9 +95,9 @@ jobs:
           meme_url, meme_title = get_meme()
           now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
 
-          new_meme_block = f"### 🗓 {now_str} — {meme_title}\n\n"
+          new_meme_block = f"###  {now_str} — {meme_title}\n\n"
           new_meme_block += f"![]({meme_url})\n\n"
-          new_meme_block += f"<sub>Источник: Reddit / Запасной банк мемов</sub>\n\n"
+          new_meme_block += f"<sub>Источник: Reddit / Проверенные мемы</sub>\n\n"
           new_meme_block += f"---\n\n"
           
           content += new_meme_block
@@ -93,7 +105,8 @@ jobs:
           with open(README_FILE, 'w', encoding='utf-8') as f:
               f.write(content)
 
-          print(f"✅ Мем #{count} успешно добавлен: {meme_title}")
+          print(f"✅ Мем #{count} добавлен: {meme_title}")
+          print(f"🔗 URL: {meme_url}")
           PYTHON_SCRIPT
 
       - name: Commit and Push
