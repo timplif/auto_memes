@@ -6,8 +6,8 @@
 
 ## 📊 Статистика
 
-- 🎲 Всего мемов: **13**
--  Последний мем: _29.09.2026 17:04_
+- 🎲 Всего мемов: **2**
+-  Последний мем: _29.09.2026 17:06_
 -  Обновляется: 3 раза в день
 -  Темы: Программирование, учеба, баги, дедлайны
 
@@ -15,9 +15,9 @@
 
 ##  Свежие мемы
 
-### 🗓 29.09.2026 17:04 — This is what I created while learning advanced JavaScript topics and it's finally complete!
+### 🗓 29.09.2026 17:06 — ohToBeYoungAndWritingUnoptimalCodeThatBrokeProd
 
-![](https://i.redd.it/obs9hh5fexrh1.gif)
+![](https://i.redd.it/jgr8j4yz8frh1.png)
 
 <sub>Источник: Reddit</sub>
 
