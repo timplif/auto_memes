@@ -14,3 +14,11 @@
 
 ---
 
+###  29.09.2026 16:24 — The apocalypse is not what I expected
+
+![](https://i.redd.it/f7r64552cdsh1.png)
+
+<sub>Источник: Reddit / Проверенные мемы</sub>
+
+---
+
