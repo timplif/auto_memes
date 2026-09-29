@@ -1,0 +1,90 @@
+name: Daily Russian Memes in README
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+    - cron: '0 14 * * *'
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  add-meme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Git
+        run: |
+          git config --local user.email "tima.privalov2008@gmail.com"
+          git config --local user.name "timplif"
+
+      - name: Add Russian Meme
+        run: |
+          python3 << 'EOF'
+          import os, urllib.request, json, re, random
+          from datetime import datetime
+
+          README = "README.md"
+          
+          MEMES = [
+              {"url": "https://i.imgflip.com/1g8my4.jpg", "title": "Две кнопки"},
+              {"url": "https://i.imgflip.com/30b1gx.jpg", "title": "Дрейк одобряет"},
+              {"url": "https://i.imgflip.com/261o3j.jpg", "title": "Это фича, не баг"},
+              {"url": "https://i.imgflip.com/46e43q.jpg", "title": "Всегда так было"},
+              {"url": "https://i.imgflip.com/3lmzyx.jpg", "title": "Stonks"},
+          ]
+
+          def get_meme():
+              try:
+                  req = urllib.request.Request("https://meme-api.com/gimme/russianmemes", headers={'User-Agent': 'Mozilla/5.0'})
+                  with urllib.request.urlopen(req, timeout=5) as r:
+                      data = json.loads(r.read().decode())
+                      if data.get('url') and re.search('[а-яА-ЯёЁ]', data.get('title', '')):
+                          return data['url'], data['title']
+              except:
+                  pass
+              m = random.choice(MEMES)
+              return m['url'], m['title']
+
+          now = datetime.now().strftime("%d.%m.%Y %H:%M")
+          
+          if os.path.exists(README):
+              with open(README, 'r', encoding='utf-8') as f:
+                  content = f.read()
+              count = len(re.findall(r'### 🗓', content)) + 1
+              content = re.sub(r'Всего мемов: \*\*\d+\*\*', f'Всего мемов: **{count}**', content)
+              content = re.sub(r'Последний мем: _.*_', f'Последний мем: _{now}_', content)
+              
+              header_end = content.find("## 🎲 Свежие мемы")
+              if header_end != -1:
+                  memes_start = content.find("\n\n", header_end) + 2
+                  header = content[:memes_start]
+                  old_memes = content[memes_start:]
+              else:
+                  header = content + "\n## 🎲 Свежие мемы\n\n"
+                  old_memes = ""
+          else:
+              count = 1
+              header = f"# 😂 Коллекция русских мемов\n\n> Автопополняемая коллекция! 🇷\n\n---\n\n##  Статистика\n\n- 🎲 Всего мемов: **{count}**\n-  Последний мем: _{now}_\n- 🔄 Обновляется: 3 раза в день\n\n---\n\n## 🎲 Свежие мемы\n\n"
+              old_memes = ""
+
+          url, title = get_meme()
+          new_meme = f"### 🗓 {now} — {title}\n\n![]({url})\n\n<sub>Источник: Reddit</sub>\n\n---\n\n"
+          
+          with open(README, 'w', encoding='utf-8') as f:
+              f.write(header + new_meme + old_memes)
+          
+          print(f"✅ Мем #{count} добавлен: {title}")
+          EOF
+
+      - name: Commit and Push
+        run: |
+          git add README.md
+          git commit -m "😂 Добавил мем"
+          git push
